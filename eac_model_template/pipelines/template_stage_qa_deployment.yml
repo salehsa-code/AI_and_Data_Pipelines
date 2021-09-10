@@ -1,0 +1,17 @@
+parameters:
+- name: calling_pipeline
+  type: object
+- name: artifactBuildID
+  type: string
+
+stages:
+- stage: qa_deployment
+  displayName: QA Deployment
+  jobs:
+    - job: 'Echo_current_variables'
+      steps:
+        - bash: |
+            echo projectID=${{ parameters.calling_pipeline.projectID }}
+            echo pipelineId=${{ parameters.calling_pipeline.pipelineID }}
+            echo artifactBuildId=${{ parameters.artifactBuildId }}
+          displayName: echo pipeline vars

@@ -1,0 +1,122 @@
+###
+# MLOps Model Evaluate & Register Stage Template
+#
+#  This template is meant to house any and all steps as per design under https://wiki.swedbank.net/pages/viewpage.action?pageId=1273566271
+#
+###
+parameters:
+- name: MODEL_LIB_TYPE # Ex: Conda, Pip, etc..
+  type: string
+  default: "conda"
+- name: MODEL_SRC_PATH # The Path relative to the root of the repository which contains the model code
+  type: string
+- name: MODEL_TYPE # rulebased, supervised, unsupervised, etc...
+  type: string
+  default: "supervised"
+- name: DB_WORKSPACE_URI # The DataBricks Workspace you want to use with this action
+  type: string
+- name: DB_PERSONAL_TOKEN # The personal token you want to use with this action
+  type: string
+- name: DB_NB_SOURCE_DIR # Usually this is "<MODEL_SRC_PATH>/model_src/"
+  type: string
+- name: DB_NB_TARGET_DIR # Usually this is "/Shared/<MODEL_SRC_PATH>/ado_notebooks"
+  type: string
+- name: DB_CLUSTER_NAME  # The name of the cluster you use or want to use
+  type: string
+- name: DB_CLUSTER_SPARK_VERSION
+  type: string
+- name: DB_CLUSTER_NODE_TYPE
+  type: string
+- name: DB_CMR_SCOPE
+  type: string
+- name: DB_CMR_PREFIX
+  type: string
+
+stages:
+- stage: ScoreModel
+  displayName: "Score Model"
+  jobs:
+    - job: "PIP_INSTALL_MLOPS_LIBS"
+      displayName: "pip install MLOps libraries to agent"
+      steps:
+        #- checkout: self
+        - checkout: eac_model_template
+          path: eac_model_template
+        - bash: |
+            pip3 install setuptools
+            pip3 install -e $(Build.SourcesDirectory)/swb_mlops_azure_pypi/src --force-reinstall --no-deps
+          displayName: 'pip install EAC MLOps package'
+    - job: "import_notebook"
+      displayName: "Import Notebook to DB Workspace"
+      dependsOn: "PIP_INSTALL_MLOPS_LIBS"
+      steps:
+        - task: PythonScript@0
+          displayName: Upload Notebook to Target Location
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import import_notebook
+              import_notebook.notebook_copy(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}", db_token="${{parameters.DB_PERSONAL_TOKEN}}", source_nb_dir="${{parameters.DB_NB_SOURCE_DIR}}", target_nb_dir="${{parameters.DB_NB_TARGET_DIR}}", language="PYTHON")
+            pythonInterpreter: /usr/bin/python3
+    - job: "create_start_cluster"
+      displayName: "Create & Start Cluster"
+      dependsOn: ["PIP_INSTALL_MLOPS_LIBS"]  # IF the cluster already exists we just return the known id
+      steps:
+        - task: PythonScript@0
+          displayName: Create DB Cluster
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import create_start_cluster
+              db_cluster_id = create_start_cluster.db_clusters_create(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}", db_token="${{parameters.DB_PERSONAL_TOKEN}}", cluster_name="${{parameters.DB_CLUSTER_NAME}}", spark_version="${{parameters.DB_CLUSTER_SPARK_VERSION}}", node_type="${{parameters.DB_CLUSTER_NODE_TYPE}}")
+              print("db_cluster_id = " + str(db_cluster_id))
+              print('##vso[task.setvariable variable=db_cluster_id;]%s' % str(db_cluster_id))
+            pythonInterpreter: /usr/bin/python3
+        - task: PythonScript@0
+          displayName: Start DB Cluster
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import create_start_cluster
+              create_start_cluster.db_clusters_start(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}", db_token="${{parameters.DB_PERSONAL_TOKEN}}", cluster_id="$(db_cluster_id)")
+            pythonInterpreter: /usr/bin/python3
+    - job: "install_libs"
+      displayName: "Install Model Libraries on Cluster"
+      dependsOn: ["import_notebook", "create_start_cluster", "PIP_INSTALL_MLOPS_LIBS"]
+      steps:
+        - task: PythonScript@0
+          displayName: Install Libraries to Cluster
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import install_libraries
+              install_libraries.db_libraries_install(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}", db_token="${{parameters.DB_PERSONAL_TOKEN}}", cluster_name="${{parameters.DB_CLUSTER_NAME}}", file_format="${{parameters.MODEL_LIB_TYPE}}", directory="${{parameters.DB_NB_SOURCE_DIR}}")
+            pythonInterpreter: /usr/bin/python3
+    - job: "create_start_job"
+      displayName: "Create and Start a SCORING DB Job"
+      dependsOn: ["install_libs", "PIP_INSTALL_MLOPS_LIBS"]
+      steps:
+        - task: PythonScript@0
+          displayName: Create Job against Cluster
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import create_start_job
+              db_job_id = create_start_job.db_jobs_create(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}",db_token="${{parameters.DB_PERSONAL_TOKEN}}",cluster_name="${{parameters.DB_CLUSTER_NAME}}", job_name="${{ parameters.MODEL_SRC_PATH}}", notebook_full_path="${{parameters.DB_NB_TARGET_DIR}}/scoring")
+              print("db_job_id=" + str(db_job_id))
+              print('##vso[task.setvariable variable=db_job_id;]%s' % str(db_job_id))
+            pythonInterpreter: /usr/bin/python3
+        - task: PythonScript@0
+          displayName: "Run Job"
+          inputs:
+            scriptSource: inline
+            script: |
+              from swb.mlops.db.batch_model import create_start_job
+              db_run_id, db_number_in_job = create_start_job.db_jobs_run_now(db_workspace_uri="${{parameters.DB_WORKSPACE_URI}}",db_token="${{parameters.DB_PERSONAL_TOKEN}}", job_id="$(db_job_id)", nb_parameters={"environment": "test", "db_cmr_prefix" : "${{parameters.DB_CMR_PREFIX}}", "db_cmr_scope" : "${{parameters.DB_CMR_SCOPE}}" })
+              print("db_job_id=" + str("$(db_job_id)"))
+              print("db_run_id=" + str(db_run_id))
+              print('##vso[task.setvariable variable=db_run_id;]%s' % str(db_run_id))
+              print("db_number_in_job=" + str(db_number_in_job))
+              print('##vso[task.setvariable variable=db_number_in_job;]%s' % str(db_number_in_job))
+            pythonInterpreter: /usr/bin/python3
+

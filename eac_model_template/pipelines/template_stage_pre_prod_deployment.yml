@@ -1,0 +1,17 @@
+stages:
+- stage: pre_prod_deployment
+  displayName: Pre-Production Deployment Approval
+  dependsOn: qa_deployment
+  jobs:
+  - job: waitForValidation
+    displayName: Wait for external validation for production deployment
+    pool: server
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: |
+              varun.bhatnagar@swedbank.se
+          instructions: 'Please validate the deployment before Prod run'
+          onTimeout: 'resume'

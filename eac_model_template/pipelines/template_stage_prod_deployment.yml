@@ -1,0 +1,19 @@
+parameters:
+- name: calling_pipeline
+  type: object
+- name: artifactBuildID
+  type: string
+
+stages:
+- stage: prod_deployment
+  displayName: Production Deployment
+  dependsOn: pre_prod_deployment
+  jobs:
+    # track deployments on the environment
+    - job: 'Echo_current_variables'
+      steps:
+        - bash: |
+            echo projectID=${{ parameters.calling_pipeline.projectID }}
+            echo pipelineId=${{ parameters.calling_pipeline.pipelineID }}
+            echo artifactBuildId=${{ parameters.artifactBuildID }}
+          displayName: echo pipeline vars

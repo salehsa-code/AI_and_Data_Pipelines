@@ -1,0 +1,30 @@
+######################################################################################################################
+# EAC MLOps - Run PyLint Template
+######################################################################################################################
+parameters:
+- name: target_path
+  type: string
+  displayName: "Relative Path you want to run against PyLint.  Ex: \'model_src/\'"
+
+steps:
+  - bash: |
+      echo Processing ${{ parameters.target_path }}
+      ls -la
+      cd ${{ parameters.target_path }}
+      ls -la
+    displayName: 'PyLint: Test Folder exists'
+  - bash: |
+      pip3 install pylint pylint_junit --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+    displayName: 'PyLint: Install pylint dependencies'
+  - bash: |
+      pylint --output-format=pylint_junit.JUnitReporter ${{parameters.target_path}}/ > linting-testresults.xml || EXIT_CODE=$?
+      echo Pylint EXIT_CODE = $EXIT_CODE
+      cat linting-testresults.xml
+    displayName: 'PyLint: Execute Pylint'
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: 'linting-testresults.xml'
+      testRunTitle: '$(Agent.OS) - $(Build.BuildNumber)[$(Agent.JobName)] - Python $(python.version) - Linting Test results (${{parameters.target_path}}) '
+    condition: succeededOrFailed()
+    displayName: 'PyLint: Publish linting results'

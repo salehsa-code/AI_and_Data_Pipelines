@@ -1,0 +1,16 @@
+stages:
+- stage: pre_qa_deployment
+  displayName: Pre-QA Deployment Approval
+  jobs:
+  - job: waitForValidation
+    displayName: Wait for external validation for QA Environment deployment
+    pool: server
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: |
+              varun.bhatnagar@swedbank.se
+          instructions: 'Please validate the deployment before QA Environment run'
+          onTimeout: 'resume'

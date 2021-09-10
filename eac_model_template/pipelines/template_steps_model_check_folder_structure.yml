@@ -1,0 +1,24 @@
+######################################################################################################################
+# EAC MLOps - Run PyBandit Template
+######################################################################################################################
+parameters:
+- name: target_path
+  type: string
+  displayName: "This must be the path to your Models root directory.  Usually this is just the root of the git repo."
+
+steps:
+  - bash: |
+      echo Processing ${{ parameters.target_path }}
+      ls -la
+      if [ ! -d "${{ parameters.target_path }}" ]; then
+        return 1
+      fi
+    displayName: 'Verify Model Folder Exists'
+  - bash: |
+      if [ ! -d "${{ parameters.target_path }}/model_src" ]; then
+        echo expected folder "${{ parameters.target_path }}/model_src/" does not exist!
+        echo Please move your model code under the expected sub-dir
+        echo <YOUR_MODELS_ROOT_DIR>/model_src and try again.
+        return 1
+      fi
+    displayName: 'Verify Model Folder Sub-Dirs Exist'

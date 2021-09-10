@@ -1,0 +1,70 @@
+######################################################################################################################
+# EAC MLOps - Run PyTest Template
+######################################################################################################################
+parameters:
+- name: target_path
+  type: string
+  displayName: "Relative Path you want to run against PyTest.  Ex: \'model_tests/\'"
+- name: requirements_to_test
+  type: string
+  default: ''
+  displayName: "A string of space delimited pip packages you may need to execute PyTest. Ex: \'mlflow tensorflow==2.0.1\'"
+
+stages:
+- stage: ExecutePytest
+  displayName: "Execute PyTest"
+  jobs:
+    - job: "PIP_INSTALL_MLOPS_LIBS"
+      displayName: "Optionally install latest swb mlops libs"
+      steps:
+        - checkout: eac_model_template
+          path: eac_model_template
+        - bash: |
+            pip3 install setuptools
+            pip3 install -e $(Build.SourcesDirectory)/swb_mlops_azure_pypi/src --force-reinstall --no-deps
+          displayName: 'pip install EAC MLOps package'
+    - job: "RUN_PYTEST"
+      displayName: "PyTest: Setup and Run"
+      dependsOn: PIP_INSTALL_MLOPS_LIBS
+      steps:
+        - bash: |
+            pip3 install pytest pytest-azurepipelines --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+            pip3 install pytest-cov --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+          displayName: 'PyTest: Install pytest and dependencies'
+        - script: |
+            if [ -z ${{parameters.requirements_to_test}} ]; then
+              echo No REQUIREMENTS requested to run PyTest, if needed.. set REQUIREMENTS_TO_TEST param
+            else
+              echo REQUIREMENTS NEEDED
+              pip3 install ${{parameters.requirements_to_test}} --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+            fi
+          displayName: 'PyTest: Install the code under testings requirements'
+        - script: |
+            cd ${{ parameters.target_path }}
+            pytest --doctest-modules --junitxml=junit/test-results.xml --cov=. --cov-append --cov-report=xml:coverage.xml --cov-report=html:htmlcov || EXIT_CODE=$?
+            echo PyTest EXIT_CODE = $EXIT_CODE
+          displayName: "PyTest: Execute pytest"
+        - bash: |
+            echo Processing ${{ parameters.target_path }}
+            ls -la ${{ parameters.target_path }}
+          condition: succeededOrFailed()
+          displayName: "PyTest: Check for XML"
+        - task: PublishTestResults@2
+          inputs:
+            testResultsFormat: 'JUnit'
+            testResultsFiles: '${{parameters.target_path}}/junit/test-results.xml'
+            testRunTitle: '$(Agent.OS) - $(Build.BuildNumber)[$(Agent.JobName)] - Python $(python.version) - Unit Test results (${{parameters.target_path}}) '
+          condition: succeededOrFailed()
+          displayName: 'PyTest: Publish unit test results'
+        - task: PublishCodeCoverageResults@1
+          inputs:
+            codeCoverageTool: Cobertura
+            summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+            reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+          displayName: 'PyTest: Publish Coverage Results'
+        - bash: |
+            echo Processing ${{ parameters.target_path }}
+            ls -la
+            cd ${{ parameters.target_path }}/junit
+            ls -la
+          displayName: "Check for XML"

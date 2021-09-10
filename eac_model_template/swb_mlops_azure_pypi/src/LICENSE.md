@@ -1,0 +1,1 @@
+Copyright Swedbank 2021

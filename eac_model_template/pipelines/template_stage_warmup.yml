@@ -1,0 +1,18 @@
+stages:
+- stage: WarmUp
+  displayName: "Warmup"
+  jobs:
+    - job: "Setup_Env_Variables"
+      displayName: "Use bash to programmatically retrieve models"
+      steps:
+        # Sets FOO to be "some value" in the script and the next ones
+        - bash: |
+            FOO=$(ls -d -- */)
+            echo $FOO
+            echo "##vso[task.setvariable variable=FOO]$FOO"
+        # Using the $() syntax, the value is replaced inside Azure Pipelines before being submitted to the script task
+        - bash: |
+            echo "$(FOO)"
+        # The same variable is also present as environmental variable in scripts; here the variable expansion happens within bash
+        - bash: |
+            echo "$FOO"

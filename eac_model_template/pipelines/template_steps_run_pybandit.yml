@@ -1,0 +1,21 @@
+######################################################################################################################
+# EAC MLOps - Run PyBandit Template
+######################################################################################################################
+parameters:
+- name: target_path
+  type: string
+  displayName: "Relative Path you want to run against PyBandit.  Ex: \'model_src/\'"
+steps:
+  - bash: |
+      pip3 install bandit --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+    displayName: 'PyBandit: Install PyBandit dependencies'
+  - bash: |
+      ls -la
+      cd ${{parameters.target_path}}
+      export PATH=$PATH:/home/vsts/.local/bin
+      bandit -r $PWD -lll
+      if [ $? -ne 0 ]
+      then
+      exit 1
+      fi
+    displayName: 'PyBandit: Execute bandit security scan'
