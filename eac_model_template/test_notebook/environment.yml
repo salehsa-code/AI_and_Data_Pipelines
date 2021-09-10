@@ -1,0 +1,4 @@
+name: pyspark-python3
+dependencies:
+  - pip:
+    - z3-solver
