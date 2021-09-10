@@ -1,4 +1,4 @@
-# Swedbank Machine Learning Operations Routines
+# Machine Learning Operations Routines
 
 This folder contains the python pypi modules `sb.mlops.*`
 
