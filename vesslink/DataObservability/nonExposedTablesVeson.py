@@ -1,0 +1,1 @@
+tablesOutOfScopeVeson=['AccountAnalysis','AuditRow', 'AuditTrail','PortActivityBunker','Revision','TimeCharterTcFormUserDefinedFields']
