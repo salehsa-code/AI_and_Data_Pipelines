@@ -14,7 +14,7 @@ steps:
       ls -la
     displayName: 'PyLint: Test Folder exists'
   - bash: |
-      pip3 install pylint pylint_junit --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+      pip3 install pylint pylint_junit --trusted-host repository.placeholder.net --index=https://repository.placeholder.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
     displayName: 'PyLint: Install pylint dependencies'
   - bash: |
       pylint --output-format=pylint_junit.JUnitReporter ${{parameters.target_path}}/ > linting-testresults.xml || EXIT_CODE=$?
