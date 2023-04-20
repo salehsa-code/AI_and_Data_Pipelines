@@ -7,7 +7,7 @@ parameters:
   displayName: "Relative Path you want to run against PyBandit.  Ex: \'model_src/\'"
 steps:
   - bash: |
-      pip3 install bandit --trusted-host repository.swedbank.net --index=https://repository.swedbank.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
+      pip3 install bandit --trusted-host repository.placeholder.net --index=https://repository.placeholder.net/artifactory/api/pypi/sb-generic-pypi-pypi-remote/simple/
     displayName: 'PyBandit: Install PyBandit dependencies'
   - bash: |
       ls -la
