@@ -1,7 +1,7 @@
 ###
 # MLOps Model Evaluate & Register Stage Template
 #
-#  This template is meant to house any and all steps as per design under https://wiki.swedbank.net/pages/viewpage.action?pageId=1273566271
+#  This template is meant to house any and all steps as per design 
 #
 ###
 parameters:
