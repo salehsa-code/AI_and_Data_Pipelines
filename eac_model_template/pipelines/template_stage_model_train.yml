@@ -1,7 +1,7 @@
 #####################################################################################################################
 # MLOps Model Training Stage Template
 # This template is meant to house any and all steps as per design
-#   See : https://wiki.swedbank.net/pages/viewpage.action?pageId=1273566271
+#   
 ####################################################################################################################
 parameters:
 - name: MODEL_SRC_PATH # The Path relative to the root of the repository which contains the model code
